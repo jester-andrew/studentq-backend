@@ -14,7 +14,7 @@ let dbURL = process.env.MONGODB_URI || 'mongodb://heroku_tv8fc3vn:4r96lahmjgk6fp
 
 app.use(express.static(path.join(__dirname, 'public')))
 app.use(bodyParser.json());
-app.use(cors());
+//app.use(cors());
 
 var urlencodedParser = bodyParser.urlencoded({ extended: false })
 
