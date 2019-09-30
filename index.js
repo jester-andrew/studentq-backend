@@ -8,11 +8,13 @@ const assert = require('assert');
 const dbName = 'heroku_tv8fc3vn';
 const bcrypt = require('bcrypt');
 let bodyParser = require("body-parser");
+var cors = require('cors');
 let dbURL = process.env.MONGODB_URI || 'mongodb://heroku_tv8fc3vn:4r96lahmjgk6fpmpjoc491o8ir@ds163745.mlab.com:63745/heroku_tv8fc3vn';
 
 
 app.use(express.static(path.join(__dirname, 'public')))
 app.use(bodyParser.json());
+app.use(cors());
 var urlencodedParser = bodyParser.urlencoded({ extended: false })
 app.set('views', path.join(__dirname, 'views'))
 app.set('view engine', 'ejs')
