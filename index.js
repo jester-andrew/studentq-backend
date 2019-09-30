@@ -91,7 +91,7 @@ app.delete('/removeq', (req, res) => {
  *  collection: ""
  * }
  */
-app.post('/que', (req, res) => {
+app.post('/que', cors(), (req, res) => {
     console.log('here');
     mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
         let db = client.db(dbName);
