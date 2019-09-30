@@ -11,16 +11,11 @@ let bodyParser = require("body-parser");
 let cors = require('cors');
 let dbURL = process.env.MONGODB_URI || 'mongodb://heroku_tv8fc3vn:4r96lahmjgk6fpmpjoc491o8ir@ds163745.mlab.com:63745/heroku_tv8fc3vn';
 
-
-app.use(express.static(path.join(__dirname, 'public')))
 app.use(bodyParser.json());
 //app.use(cors());
 
 var urlencodedParser = bodyParser.urlencoded({ extended: false })
 
-app.set('views', path.join(__dirname, 'views'))
-app.set('view engine', 'ejs')
-app.get('/', (req, res) => res.render('pages/index'))
 app.listen(PORT, () => console.log(`Listening on ${ PORT }`))
 
 
@@ -95,6 +90,10 @@ app.delete('/removeq', (req, res) => {
  */
 app.post('/que', (req, res) => {
     console.log('here');
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader('Access-Control-Allow-Methods', '*');
+    res.setHeader("Access-Control-Allow-Headers", "*");
+
     mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
         let db = client.db(dbName);
         let qcollection = req.body.collection;
