@@ -8,7 +8,7 @@ const assert = require('assert');
 const dbName = 'heroku_tv8fc3vn';
 const bcrypt = require('bcrypt');
 let bodyParser = require("body-parser");
-var cors = require('cors');
+let cors = require('cors');
 let dbURL = process.env.MONGODB_URI || 'mongodb://heroku_tv8fc3vn:4r96lahmjgk6fpmpjoc491o8ir@ds163745.mlab.com:63745/heroku_tv8fc3vn';
 
 
@@ -91,7 +91,7 @@ app.delete('/removeq', (req, res) => {
  *  collection: ""
  * }
  */
-app.post('/que', cors(), (req, res) => {
+app.post('/que', (req, res) => {
     console.log('here');
     mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
         let db = client.db(dbName);
