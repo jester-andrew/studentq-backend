@@ -15,7 +15,9 @@ let dbURL = process.env.MONGODB_URI || 'mongodb://heroku_tv8fc3vn:4r96lahmjgk6fp
 app.use(express.static(path.join(__dirname, 'public')))
 app.use(bodyParser.json());
 app.use(cors());
+
 var urlencodedParser = bodyParser.urlencoded({ extended: false })
+
 app.set('views', path.join(__dirname, 'views'))
 app.set('view engine', 'ejs')
 app.get('/', (req, res) => res.render('pages/index'))
