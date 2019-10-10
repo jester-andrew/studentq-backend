@@ -7,6 +7,8 @@ var ObjectId = require('mongodb').ObjectID;
 const assert = require('assert');
 const dbName = 'heroku_tv8fc3vn';
 const bcrypt = require('bcrypt');
+
+
 let bodyParser = require("body-parser");
 let cors = require('cors');
 let dbURL = process.env.MONGODB_URI || 'mongodb://heroku_tv8fc3vn:4r96lahmjgk6fpmpjoc491o8ir@ds163745.mlab.com:63745/heroku_tv8fc3vn';
@@ -73,20 +75,24 @@ app.post('/enterq', (req, res) => {
  *  collection: ""
  * }
  */
-app.delete('/removeq', (req, res) => {
+app.post('/removeq', (req, res) => {
     mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
         let requestId = req.body.id;
+        console.log(requestId);
         let db = client.db(dbName);
-        let qcollection = req.body.collection;
-        db.collection(qcollection).removeOne({ _id: ObjectId(requestId) }, (err, result) => {
-            if (err) {
-                res.status(500).json({ deleted: false });
-                res.end();
-            } else {
-                res.status(200).json({ deleted: true });
-                res.end();
-            }
-            client.close();
+        let qcollectionAlias = req.body.collection;
+        console.log(qcollectionAlias);
+        db.collection('alias_to_collection_map').find({ alias: qcollectionAlias }).toArray((error, result) => {
+            db.collection(result[0].collection).deleteOne({ _id: ObjectId(requestId) }, (err, result) => {
+                if (err) {
+                    res.status(500).json({ deleted: false });
+                    res.end();
+                } else {
+                    res.status(200).json({ deleted: true });
+                    res.end();
+                }
+                client.close();
+            });
         });
     });
 });
@@ -99,13 +105,12 @@ app.delete('/removeq', (req, res) => {
  * }
  */
 app.post('/que', (req, res) => {
-    console.log('here');
-    res.setHeader("Access-Control-Allow-Headers", "*");
-
     mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
         let db = client.db(dbName);
         let qcollectionAlias = req.body.collection;
+        console.log(qcollectionAlias);
         db.collection('alias_to_collection_map').find({ alias: qcollectionAlias }).toArray((error, result) => {
+            console.log(result);
             db.collection(result[0].collection).find().toArray((error, result) => {
                 if (err) {
                     console.error(err);
