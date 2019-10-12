@@ -3,6 +3,7 @@
  ***************************************************************/
 const express = require('express')
 const app = express();
+require('dotenv').config()
 const path = require('path')
 const PORT = process.env.PORT || 5000
 const mongo = require('mongodb').MongoClient;
@@ -31,8 +32,10 @@ app.all("/*", function(req, res, next) {
 /***************************************************************
  * Database Variables
  ***************************************************************/
-let dbURL = process.env.MONGODB_URI || 'mongodb://heroku_tv8fc3vn:4r96lahmjgk6fpmpjoc491o8ir@ds163745.mlab.com:63745/heroku_tv8fc3vn';
-const dbName = 'heroku_tv8fc3vn';
+let dbURL = process.env.MONGODB_URI;
+const dbName = process.env.dbName;
+console.log(dbURL)
+console.log(dbName)
 
 
 /***************************************************************
