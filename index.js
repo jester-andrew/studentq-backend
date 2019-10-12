@@ -1,3 +1,6 @@
+/***************************************************************
+ * Libraries
+ ***************************************************************/
 const express = require('express')
 const app = express();
 const path = require('path')
@@ -5,18 +8,17 @@ const PORT = process.env.PORT || 5000
 const mongo = require('mongodb').MongoClient;
 var ObjectId = require('mongodb').ObjectID;
 const assert = require('assert');
-const dbName = 'heroku_tv8fc3vn';
 const bcrypt = require('bcrypt');
+const socket = require('socket.io');
 
-
+/***************************************************************
+ * Middleware
+ ***************************************************************/
 let bodyParser = require("body-parser");
 let cors = require('cors');
-let dbURL = process.env.MONGODB_URI || 'mongodb://heroku_tv8fc3vn:4r96lahmjgk6fpmpjoc491o8ir@ds163745.mlab.com:63745/heroku_tv8fc3vn';
-
 app.use(bodyParser.json());
 var urlencodedParser = bodyParser.urlencoded({ extended: false });
 
-app.listen(PORT, () => console.log(`Listening on ${ PORT }`));
 app.all("/*", function(req, res, next) {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
@@ -26,8 +28,59 @@ app.all("/*", function(req, res, next) {
     next();
 });
 
+/***************************************************************
+ * Database Variables
+ ***************************************************************/
+let dbURL = process.env.MONGODB_URI || 'mongodb://heroku_tv8fc3vn:4r96lahmjgk6fpmpjoc491o8ir@ds163745.mlab.com:63745/heroku_tv8fc3vn';
+const dbName = 'heroku_tv8fc3vn';
+
+
+/***************************************************************
+ * server setup
+ ***************************************************************/
+let server = app.listen(PORT, () => console.log(`Listening on ${ PORT }`));
+
+/***************************************************************
+ * Web Socket listeners
+ ***************************************************************/
+let io = socket(server);
+io.on('connection', (socket) => {
+    //adding a help request
+    socket.on('add', (req) => {
+        addRequest(req, (result) => {
+            if (result.insertedCount > 0) {
+                console.log('inserted request');
+                //get que and emit
+                getQ(req, (err, response) => {
+                    io.sockets.emit('add', JSON.stringify(response));
+                });
+            } else {
+                console.error('request was not inserted');
+            }
+        })
+    });
+
+    // removing a help request
+    socket.on('remove', (req) => {
+        //io.sockets.emit('remove', req);
+        removeRequest(req, (err, result) => {
+            if (err) {
+                console.log('deleted:  false');
+            } else {
+                console.log('deleted:  true');
+                //get que and emit
+                getQ(req, (err, response) => {
+                    io.sockets.emit('add', JSON.stringify(response));
+                });
+            }
+        });
+    });
+});
+/***************************************************************
+ * Endpoints
+ ***************************************************************/
 /**
- * enters a request onto the que
+ * enters a request onto the que *Depricated*
  * 
  * {
  *  studentRequest:{},
@@ -35,40 +88,23 @@ app.all("/*", function(req, res, next) {
  * }
  */
 app.post('/enterq', (req, res) => {
-    console.log('here');
-    mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
-        assert.equal(null, err);
-        let studentRequest = {
-            name: req.body.name,
-            class: req.body.class,
-            question: req.body.question,
-            campus: req.body.campus,
-            email: req.body.email,
+    addRequest(req, (result) => {
+        if (result.insertedCount > 0) {
+            console.log('inserted request');
+            res.status(200).json({ inserted: true });
+            res.end();
+        } else {
+            console.error('request was not inserted');
+            res.status(500).json({ inserted: false });
+            res.end();
         }
-        let db = client.db(dbName);
-        let qcollectionAlias = req.body.collection;
-        console.log(qcollectionAlias);
-        db.collection('alias_to_collection_map').find({ alias: qcollectionAlias }).toArray((error, result) => {
-            console.log(result);
-            db.collection(result[0].collection).insertOne(studentRequest, (err, result) => {
-                assert.equal(null, err);
-                if (result.insertedCount > 0) {
-                    console.log('inserted request');
-                    res.status(200).json({ inserted: true });
-                    res.end();
-                } else {
-                    console.error('request was not inserted');
-                    res.status(500).json({ inserted: false });
-                    res.end();
-                }
-                client.close();
-            });
-        });
     });
 });
 
+
+
 /**
- * removes a request from the que
+ * removes a request from the que *Depricated*
  * 
  * {
  *  id:'',
@@ -76,24 +112,14 @@ app.post('/enterq', (req, res) => {
  * }
  */
 app.post('/removeq', (req, res) => {
-    mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
-        let requestId = req.body.id;
-        console.log(requestId);
-        let db = client.db(dbName);
-        let qcollectionAlias = req.body.collection;
-        console.log(qcollectionAlias);
-        db.collection('alias_to_collection_map').find({ alias: qcollectionAlias }).toArray((error, result) => {
-            db.collection(result[0].collection).deleteOne({ _id: ObjectId(requestId) }, (err, result) => {
-                if (err) {
-                    res.status(500).json({ deleted: false });
-                    res.end();
-                } else {
-                    res.status(200).json({ deleted: true });
-                    res.end();
-                }
-                client.close();
-            });
-        });
+    removeRequest(req, (err, result) => {
+        if (err) {
+            res.status(500).json({ deleted: false });
+            res.end();
+        } else {
+            res.status(200).json({ deleted: true });
+            res.end();
+        }
     });
 });
 
@@ -105,27 +131,22 @@ app.post('/removeq', (req, res) => {
  * }
  */
 app.post('/que', (req, res) => {
-    mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
-        let db = client.db(dbName);
-        let qcollectionAlias = req.body.collection;
-        console.log(qcollectionAlias);
-        db.collection('alias_to_collection_map').find({ alias: qcollectionAlias }).toArray((error, result) => {
+    getQ(req, (err, result) => {
+        if (err) {
+            console.error(err);
+            res.status(500).json({ returned: false });
+            res.end();
+        } else {
             console.log(result);
-            db.collection(result[0].collection).find().toArray((error, result) => {
-                if (err) {
-                    console.error(err);
-                    res.status(500).json({ returned: false });
-                    res.end();
-                } else {
-                    console.log(result);
-                    res.status(200).json({ returnrd: true, result: result });
-                    res.end();
-                }
-            });
-        });
+            res.status(200).json({ returnrd: true, result: result });
+            res.end();
+        }
     });
 });
 
+/**
+ *  lets the user login after checking credentials and returns an auth object.
+ */
 app.post('/login', (req, res) => {
     console.log(req.body);
     let plainText = req.body.password;
@@ -172,18 +193,22 @@ app.post('/login', (req, res) => {
     });
 });
 
-app.post('/hashPassword', (req, res) => {
-    let plainText = "";
 
-    bcrypt.hash(plainText, 10, (err, hash) => {
-        if (!err) {
-            console.log(hash);
-        } else {
-            consol.log(err);
-        }
-    });
-});
+// app.post('/hashPassword', (req, res) => {
+//     let plainText = "";
 
+//     bcrypt.hash(plainText, 10, (err, hash) => {
+//         if (!err) {
+//             console.log(hash);
+//         } else {
+//             consol.log(err);
+//         }
+//     });
+// });
+
+/**
+ *  returns the available labs
+ */
 app.get('/getLabs', (req, res) => {
     mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
         let db = client.db(dbName);
@@ -198,6 +223,14 @@ app.get('/getLabs', (req, res) => {
     });
 });
 
+/***************************************************************
+ * Data Access Functions
+ ***************************************************************/
+/**
+ * returns the user if one exists by email
+ * @param {*} email 
+ * @param {*} callback 
+ */
 function getUserByEmail(email, callback) {
     mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
         let db = client.db(dbName);
@@ -222,6 +255,10 @@ function getUserByEmail(email, callback) {
     });
 }
 
+/**
+ * Returns a session token 128 characters long
+ * @param {*} callback 
+ */
 function createSessionToken(callback) {
     let token = '';
     let characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -232,6 +269,11 @@ function createSessionToken(callback) {
     callback(token);
 }
 
+/**
+ * creates a session and stores it in the database.
+ * @param {*} adminUser 
+ * @param {*} callback 
+ */
 function createSession(adminUser, callback) {
     mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
         let db = client.db(dbName);
@@ -268,6 +310,11 @@ function createSession(adminUser, callback) {
     });
 }
 
+/**
+ * Removes old sessions from the database
+ * @param {*} email 
+ * @param {*} callback 
+ */
 function removeOldSessions(email, callback) {
     mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
         let db = client.db(dbName);
@@ -277,6 +324,85 @@ function removeOldSessions(email, callback) {
             } else {
                 callback(result);
             }
+        });
+    });
+}
+
+/**
+ * Adds a help request to the database
+ * @param {*} req 
+ * @param {*} callback 
+ */
+function addRequest(req, callback) {
+    mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
+        assert.equal(null, err);
+        let request = JSON.parse(req);
+        let studentRequest = {
+            name: request.name,
+            class: request.class,
+            question: request.question,
+            campus: request.campus,
+            email: request.email,
+        }
+
+        let db = client.db(dbName);
+        let qcollectionAlias = request.collection;
+        console.log(qcollectionAlias);
+        db.collection('alias_to_collection_map').find({ alias: qcollectionAlias }).toArray((error, result) => {
+            console.log(result);
+            db.collection(result[0].collection).insertOne(studentRequest, (err, result) => {
+                assert.equal(null, err);
+                callback(result);
+                client.close();
+            });
+        });
+    });
+}
+
+/**
+ * Removes a request from the database
+ * @param {*} req 
+ * @param {*} callback 
+ */
+function removeRequest(req, callback) {
+    mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
+        let deleteRequest = JSON.parse(req)
+        let requestId = deleteRequest.id;
+        console.log(requestId);
+        let db = client.db(dbName);
+        let qcollectionAlias = deleteRequest.collection;
+        console.log(qcollectionAlias);
+        db.collection('alias_to_collection_map').find({ alias: qcollectionAlias }).toArray((error, result) => {
+            db.collection(result[0].collection).deleteOne({ _id: ObjectId(requestId) }, (err, result) => {
+                callback(err, result);
+                client.close();
+            });
+        });
+    });
+}
+
+/**
+ * returns the Que(all help requests) that the user has selected.
+ * @param {*} req 
+ * @param {*} callback 
+ */
+function getQ(req, callback) {
+    mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
+        let db = client.db(dbName);
+        let qcollectionAlias;
+        if (req.body != undefined) {
+            qcollectionAlias = req.body.collection;
+        } else {
+            let request = JSON.parse(req)
+            qcollectionAlias = request.collection;
+        }
+        console.log(qcollectionAlias);
+        db.collection('alias_to_collection_map').find({ alias: qcollectionAlias }).toArray((error, result) => {
+            console.log(result[0].collection);
+            db.collection(result[0].collection).find().toArray((error, result) => {
+                console.log(result);
+                callback(error, result);
+            });
         });
     });
 }
