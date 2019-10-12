@@ -34,9 +34,6 @@ app.all("/*", function(req, res, next) {
  ***************************************************************/
 let dbURL = process.env.MONGODB_URI;
 const dbName = process.env.dbName;
-console.log(dbURL)
-console.log(dbName)
-
 
 /***************************************************************
  * server setup
