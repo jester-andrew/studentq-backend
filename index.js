@@ -11,6 +11,7 @@ var ObjectId = require('mongodb').ObjectID;
 const assert = require('assert');
 const bcrypt = require('bcrypt');
 const socket = require('socket.io');
+const fs = require('fs');
 
 /***************************************************************
  * Middleware
@@ -75,6 +76,16 @@ io.on('connection', (socket) => {
             }
         });
     });
+
+    socket.on('update', (req) => {
+        updateRequest(req, (result) => {
+            if (result != null) {
+                io.sockets.emit('add', JSON.stringify(result));
+            } else {
+                consol.log('failed-update');
+            }
+        });
+    });
 });
 /***************************************************************
  * Endpoints
@@ -123,6 +134,19 @@ app.post('/removeq', (req, res) => {
     });
 });
 
+app.post('/updateRequest', (req, res) => {
+    updateRequest(req, (result) => {
+        if (result != null) {
+            io.sockets.emit('add', JSON.stringify(result));
+            res.status(200).json({ returnrd: true });
+            res.end();
+        } else {
+            res.status(500).json({ returned: false });
+            res.end();
+        }
+    });
+});
+
 /**
  * returns the specified que
  * 
@@ -163,9 +187,11 @@ app.post('/login', (req, res) => {
                             adminUser.token = token;
                             removeOldSessions(email, (result) => {
                                 createSession(adminUser, (response) => {
+                                    console.lo
                                     if (response.created) {
                                         res.status(200).json({
                                             auth: {
+                                                name: adminUser.name,
                                                 email: email,
                                                 token: token,
                                                 lab: adminUser.lab,
@@ -220,6 +246,21 @@ app.get('/getLabs', (req, res) => {
                 res.end();
             });
         });
+    });
+});
+
+app.post('/saveSession', (req, res) => {
+    let helpSession = req.body.session;
+    let file = req.body.file;
+    recordHelpSession(helpSession, "helpSessionDumps/" + file + ".json", (response, err) => {
+        if (response.recorded) {
+            res.status(200).json({ saved: true });
+            res.end();
+        } else {
+            console.log(err);
+            res.status(500).json({ saved: false });
+            res.end();
+        }
     });
 });
 
@@ -404,5 +445,105 @@ function getQ(req, callback) {
                 callback(error, result);
             });
         });
+    });
+}
+
+function updateRequest(req, callback) {
+    mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
+        let db = client.db(dbName);
+        let request = JSON.parse(req)
+        let qcollectionAlias = request.collection;
+        let id = request.id;
+        db.collection('alias_to_collection_map').find({ alias: qcollectionAlias }).toArray((error, result) => {
+            let collection = result[0].collection
+            db.collection(collection).updateOne({ _id: ObjectId(id) }, { $set: { "beingHelped": "table-success", "helperName": request.name, "timeHelped": Date.now() } }, (err, result) => {
+                getQ(req, (err, result) => {
+                    callback(result);
+                });
+            });
+        });
+    });
+}
+
+function recordHelpSession(helpSession, file, callback) {
+    fs.readFile(file, (err, data) => {
+        if (err) {
+            let jsonfile = {
+                week: {
+                    timestamp: Date.now(),
+                    sessions: []
+                },
+                month: {
+                    timestamp: Date.now(),
+                    sessions: []
+                },
+                semester: {
+                    timestamp: Date.now(),
+                    sessions: []
+                }
+            }
+            jsonfile.week.sessions.push(helpSession);
+            jsonfile.month.sessions.push(helpSession);
+            jsonfile.semester.sessions.push(helpSession);
+            fs.writeFile(file, JSON.stringify(jsonfile), (err) => {
+                let response;
+                if (!err) {
+                    response = { recorded: true, err: null }
+                    callback(response);
+                } else {
+                    response = { recorded: false, err: err }
+                    callback(response)
+                }
+            });
+        } else {
+            let jsonfile = JSON.parse(data);
+            console.log(jsonfile)
+                //one week
+            let cutOffDate = new Date(jsonfile.week.timestamp);
+            var datePlusSeven = cutOffDate.setTime(cutOffDate.getTime() + (7 * 24 * 60 * 60 * 1000));
+
+            //one month
+            let cutOffDate2 = new Date(jsonfile.week.timestamp);
+            var datePlusThirty = cutOffDate2.setTime(cutOffDate2.getTime() + (30 * 24 * 60 * 60 * 1000));
+
+            //one semester 16 weeks
+            let cutOffDate3 = new Date(jsonfile.week.timestamp);
+            var datePlusThirty = cutOffDate3.setTime(cutOffDate3.getTime() + (112 * 24 * 60 * 60 * 1000));
+
+            //test dates and insert sessions
+            let today = new Date();
+
+            if (today.getTime() > cutOffDate.getTime()) {
+                jsonfile.week.sessions = jsonfile.week.sessions.splice(0, jsonfile.week.sessions.length);
+                jsonfile.week.sessions.push(helpSession)
+            } else {
+                jsonfile.week.sessions.push(helpSession)
+            }
+
+            if (today.getTime() > cutOffDate2.getTime()) {
+                jsonfile.month.sessions = jsonfile.month.sessions.splice(0, jsonfile.month.sessions.length);
+                jsonfile.month.sessions.push(helpSession)
+            } else {
+                jsonfile.month.sessions.push(helpSession)
+            }
+
+            if (today.getTime() > cutOffDate3.getTime()) {
+                jsonfile.semester.sessions = data.semester.sessions.splice(0, data.semester.sessions.length);
+                jsonfile.semester.sessions.push(helpSession)
+            } else {
+                jsonfile.semester.sessions.push(helpSession)
+            }
+
+            fs.writeFile(file, JSON.stringify(jsonfile), (err) => {
+                let response;
+                if (!err) {
+                    response = { recorded: true, err: null }
+                    callback(response);
+                } else {
+                    response = { recorded: false, err: err }
+                    callback(response)
+                }
+            });
+        }
     });
 }
