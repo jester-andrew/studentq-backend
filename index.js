@@ -239,12 +239,8 @@ app.get('/getLabs', (req, res) => {
     mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
         let db = client.db(dbName);
         db.collection('alias_to_collection_map').find().toArray((error, result) => {
-            let returnArray = [];
-            result.forEach((set) => {
-                returnArray.push(set.alias);
-                res.status(200).json({ labs: returnArray });
-                res.end();
-            });
+            res.status(200).json({ labs: result });
+            res.end();
         });
     });
 });
@@ -263,6 +259,90 @@ app.post('/saveSession', (req, res) => {
         }
     });
 });
+
+app.post('/addAdmin', (req, res) => {
+    let admin = req.body;
+    addAdmin(admin, (result) => {
+        if (result.inserted) {
+            res.status(200).json({ inserted: true });
+            res.end();
+        } else {
+            console.log(err);
+            res.status(500).json({ inserted: false });
+            res.end();
+        }
+    });
+});
+
+app.post('/deleteAdmin', (req, res) => {
+    let id = req.body.id;
+    deleteAdmin(id, (result) => {
+        console.log(result);
+        if (result.deleted) {
+            res.status(200).json({ deleted: true });
+            res.end();
+        } else {
+            res.status(500).json({ deleted: false });
+            res.end();
+        }
+    });
+});
+
+app.post('/getAdmin', (req, res) => {
+    let group = req.body.group;
+    getAdmins(group, (err, response) => {
+        if (!err) {
+            res.status(200).json({ admins: response });
+            res.end();
+        } else {
+            console.log(err);
+            res.status(500).json({ admins: null });
+            res.end();
+        }
+    });
+});
+
+app.get('/getCourses', (req, res) => {
+    getCourses((err, response) => {
+        if (!err) {
+            res.status(200).json({ courses: response });
+            res.end();
+        } else {
+            console.log(err);
+            res.status(500).json({ courses: null });
+            res.end();
+        }
+    });
+});
+
+app.post('addCourse', (req, res) => {
+    let course = req.body.course;
+    addCourse(course, (err, respnse) => {
+        if (!err) {
+            res.status(200).json({ courses: true });
+            res.end();
+        } else {
+            console.log(err);
+            res.status(500).json({ courses: false });
+            res.end();
+        }
+    });
+});
+
+app.post('deleteCourse', (req, res) => {
+    let id = req.body.id;
+    deleteCourse(course, (err, respnse) => {
+        if (!err) {
+            res.status(200).json({ deleted: true });
+            res.end();
+        } else {
+            console.log(err);
+            res.status(500).json({ deleted: false });
+            res.end();
+        }
+    });
+});
+
 
 /***************************************************************
  * Data Access Functions
@@ -384,6 +464,7 @@ function addRequest(req, callback) {
             question: request.question,
             campus: request.campus,
             email: request.email,
+            timeEnteredQue: request.timeEnteredQue
         }
 
         let db = client.db(dbName);
@@ -545,5 +626,82 @@ function recordHelpSession(helpSession, file, callback) {
                 }
             });
         }
+    });
+}
+
+function addAdmin(admin, callback) {
+    mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
+        assert.equal(null, err);
+        let db = client.db(dbName);
+        db.collection('admin_users').insertOne(admin, (err, result) => {
+            assert.equal(null, err);
+            client.close();
+        });
+    });
+}
+
+function deleteAdmin(id, callback) {
+    mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
+        assert.equal(null, err);
+        let db = client.db(dbName);
+        db.collection('admin_users').deleteOne({ _id: ObjectId(id) }, (err, result) => {
+            if (!err) {
+                callback({ deleted: true });
+            } else {
+                console.log(err);
+                callback({ deleted: false });
+            }
+            client.close();
+        });
+    });
+}
+
+function getAdmins(group, callback) {
+    mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
+        assert.equal(null, err);
+        let db = client.db(dbName);
+        db.collection('admin_users').find({ permissions: group }).toArray((error, result) => {
+            result.password = '';
+            callback(err, result);
+        });
+    });
+}
+
+function getCourses(callback) {
+    mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
+        assert.equal(null, err);
+        let db = client.db(dbName);
+        db.collection('courses').find().toArray((error, result) => {
+            result.password = '';
+            callback(err, result);
+        });
+    });
+}
+
+function addCourse(course, callback) {
+    mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
+        assert.equal(null, err);
+        let db = client.db(dbName);
+        db.collection('course').insertOne(course, (err, result) => {
+            assert.equal(null, err);
+            callback(err, result);
+            client.close();
+        });
+    });
+}
+
+function deleteCourse(id, callback) {
+    mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
+        assert.equal(null, err);
+        let db = client.db(dbName);
+        db.collection('courses').deleteOne({ _id: ObjectId(id) }, (err, result) => {
+            if (!err) {
+                callback({ deleted: true });
+            } else {
+                console.log(err);
+                callback({ deleted: false });
+            }
+            client.close();
+        });
     });
 }
