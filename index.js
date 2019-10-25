@@ -80,7 +80,7 @@ io.on('connection', (socket) => {
     socket.on('update', (req) => {
         updateRequest(req, (result) => {
             if (result != null) {
-                io.sockets.emit('add', JSON.stringify(result));
+                io.sockets.emit('helping', JSON.stringify(result));
             } else {
                 consol.log('failed-update');
             }
@@ -315,8 +315,23 @@ app.get('/getCourses', (req, res) => {
     });
 });
 
-app.post('addCourse', (req, res) => {
-    let course = req.body.course;
+app.post('/getlabCourses', (req, res) => {
+    let lab = req.body.lab;
+    getLabCourses(lab, (err, response) => {
+        if (!err) {
+            res.status(200).json({ courses: response });
+            res.end();
+        } else {
+            console.log(err);
+            res.status(500).json({ courses: null });
+            res.end();
+        }
+    });
+});
+
+app.post('/addCourse', (req, res) => {
+    console.log(req.body);
+    let course = req.body;
     addCourse(course, (err, respnse) => {
         if (!err) {
             res.status(200).json({ courses: true });
@@ -329,15 +344,15 @@ app.post('addCourse', (req, res) => {
     });
 });
 
-app.post('deleteCourse', (req, res) => {
+app.post('/deleteCourse', (req, res) => {
     let id = req.body.id;
-    deleteCourse(course, (err, respnse) => {
-        if (!err) {
-            res.status(200).json({ deleted: true });
+    deleteCourse(id, (response) => {
+        if (response.deleted) {
+            res.status(200).json(response);
             res.end();
         } else {
             console.log(err);
-            res.status(500).json({ deleted: false });
+            res.status(500).json(response);
             res.end();
         }
     });
@@ -682,7 +697,7 @@ function addCourse(course, callback) {
     mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
         assert.equal(null, err);
         let db = client.db(dbName);
-        db.collection('course').insertOne(course, (err, result) => {
+        db.collection('courses').insertOne(course, (err, result) => {
             assert.equal(null, err);
             callback(err, result);
             client.close();
@@ -702,6 +717,17 @@ function deleteCourse(id, callback) {
                 callback({ deleted: false });
             }
             client.close();
+        });
+    });
+}
+
+function getLabCourses(lab, callback) {
+    mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
+        assert.equal(null, err);
+        let db = client.db(dbName);
+        db.collection('courses').find({ lab: lab }).toArray((error, result) => {
+            result.password = '';
+            callback(err, result);
         });
     });
 }
