@@ -358,6 +358,18 @@ app.post('/deleteCourse', (req, res) => {
     });
 });
 
+app.post('/bulkReport', (req, res) => {
+    let lab = req.body.lab;
+    getLabData(lab, (response) => {
+        if (response != null) {
+            res.status(200).json({ success: true, response: response });
+            res.end();
+        } else {
+            res.status(200).json({ success: false, message: "No data available." });
+            res.end();
+        }
+    });
+});
 
 /***************************************************************
  * Data Access Functions
@@ -729,5 +741,16 @@ function getLabCourses(lab, callback) {
             result.password = '';
             callback(err, result);
         });
+    });
+}
+
+function getLabData(lab, callback) {
+    fs.readFile('helpSessionDumps/' + lab + '.json', function(err, data) {
+        if (!err) {
+            callback(JSON.parse(data));
+        } else {
+            callback(null);
+            console.log(err);
+        }
     });
 }
