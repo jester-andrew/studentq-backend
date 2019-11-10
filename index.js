@@ -365,7 +365,19 @@ app.post('/bulkReport', (req, res) => {
             res.status(200).json({ success: true, response: response });
             res.end();
         } else {
-            res.status(200).json({ success: false, message: "No data available." });
+            res.status(500).json({ success: false, message: "No data available." });
+            res.end();
+        }
+    });
+});
+
+app.get('/getlabInfo', (req, res) => {
+    getLabInfo((info) => {
+        if (info.length > 0) {
+            res.status(200).json(info);
+            res.end();
+        } else {
+            res.status(500).json({ success: false, message: "No data available." });
             res.end();
         }
     });
@@ -752,5 +764,15 @@ function getLabData(lab, callback) {
             callback(null);
             console.log(err);
         }
+    });
+}
+
+function getLabInfo(callback) {
+    mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
+        assert.equal(null, err);
+        let db = client.db(dbName);
+        db.collection('lab_times').find({}).toArray((error, result) => {
+            callback(result);
+        });
     });
 }
