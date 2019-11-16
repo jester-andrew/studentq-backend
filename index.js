@@ -172,7 +172,6 @@ app.post('/que', (req, res) => {
  *  lets the user login after checking credentials and returns an auth object.
  */
 app.post('/login', (req, res) => {
-    console.log(req.body);
     let plainText = req.body.password;
     let email = req.body.email;
 
@@ -381,6 +380,24 @@ app.get('/getlabInfo', (req, res) => {
             res.end();
         }
     });
+});
+
+app.post('/updatelabInfo', (req, res) => {
+    let lab = req.body.lab;
+    let updateObject = req.body.updateObj;
+
+    updateLabInfo(updateObject, lab, (result) => {
+        if (result.updated) {
+            res.status(200).json({ updated: true });
+            res.end();
+        } else {
+            res.status(200).json({ updated: false });
+            res.end();
+            console.log(result.error);
+        }
+    });
+
+
 });
 
 /***************************************************************
@@ -620,35 +637,40 @@ function recordHelpSession(helpSession, file, callback) {
             console.log(jsonfile)
                 //one week
             let cutOffDate = new Date(jsonfile.week.timestamp);
-            var datePlusSeven = cutOffDate.setTime(cutOffDate.getTime() + (7 * 24 * 60 * 60 * 1000));
+            cutOffDate.setTime(cutOffDate.getTime() + (7 * 24 * 60 * 60 * 1000));
 
             //one month
             let cutOffDate2 = new Date(jsonfile.week.timestamp);
-            var datePlusThirty = cutOffDate2.setTime(cutOffDate2.getTime() + (30 * 24 * 60 * 60 * 1000));
+            cutOffDate2.setTime(cutOffDate2.getTime() + (30 * 24 * 60 * 60 * 1000));
 
             //one semester 16 weeks
             let cutOffDate3 = new Date(jsonfile.week.timestamp);
-            var datePlusThirty = cutOffDate3.setTime(cutOffDate3.getTime() + (112 * 24 * 60 * 60 * 1000));
+            cutOffDate3.setTime(cutOffDate3.getTime() + (112 * 24 * 60 * 60 * 1000));
 
             //test dates and insert sessions
             let today = new Date();
 
             if (today.getTime() > cutOffDate.getTime()) {
-                jsonfile.week.sessions = jsonfile.week.sessions.splice(0, jsonfile.week.sessions.length);
-                jsonfile.week.sessions.push(helpSession)
+                console.log(jsonfile.week);
+                jsonfile.week.timestamp = Date.now();
+                jsonfile.week.sessions = [];
+                jsonfile.week.sessions.push(helpSession);
             } else {
+                console.log('here');
                 jsonfile.week.sessions.push(helpSession)
             }
 
             if (today.getTime() > cutOffDate2.getTime()) {
-                jsonfile.month.sessions = jsonfile.month.sessions.splice(0, jsonfile.month.sessions.length);
+                jsonfile.month.timestamp = Date.now();
+                jsonfile.month.sessions = [];
                 jsonfile.month.sessions.push(helpSession)
             } else {
                 jsonfile.month.sessions.push(helpSession)
             }
 
             if (today.getTime() > cutOffDate3.getTime()) {
-                jsonfile.semester.sessions = data.semester.sessions.splice(0, data.semester.sessions.length);
+                jsonfile.semester.timestamp = Date.now();
+                jsonfile.semester.sessions = [];
                 jsonfile.semester.sessions.push(helpSession)
             } else {
                 jsonfile.semester.sessions.push(helpSession)
@@ -669,13 +691,19 @@ function recordHelpSession(helpSession, file, callback) {
 }
 
 function addAdmin(admin, callback) {
-    mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
-        assert.equal(null, err);
-        let db = client.db(dbName);
-        db.collection('admin_users').insertOne(admin, (err, result) => {
-            assert.equal(null, err);
-            client.close();
-        });
+    console.log(admin);
+    bcrypt.hash(admin.password, 10, function(err, hash) {
+        if (!err) {
+            admin.password = hash;
+            mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
+                assert.equal(null, err);
+                let db = client.db(dbName);
+                db.collection('admin_users').insertOne(admin, (err, result) => {
+                    assert.equal(null, err);
+                    client.close();
+                });
+            });
+        }
     });
 }
 
@@ -773,6 +801,20 @@ function getLabInfo(callback) {
         let db = client.db(dbName);
         db.collection('lab_times').find({}).toArray((error, result) => {
             callback(result);
+        });
+    });
+}
+
+function updateLabInfo(updateValue, labName, callback) {
+    mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
+        assert.equal(null, err);
+        let db = client.db(dbName);
+        db.collection('lab_times').update({ lab: labName }, { $set: updateValue }, (err, result) => {
+            if (!err) {
+                callback({ updated: true });
+            } else {
+                callback({ updated: false, error: err });
+            }
         });
     });
 }
