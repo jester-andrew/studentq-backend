@@ -262,6 +262,7 @@ app.post('/saveSession', (req, res) => {
 app.post('/addAdmin', (req, res) => {
     let admin = req.body;
     addAdmin(admin, (result) => {
+        console.log(result);
         if (result.inserted) {
             res.status(200).json({ inserted: true });
             res.end();
@@ -691,7 +692,6 @@ function recordHelpSession(helpSession, file, callback) {
 }
 
 function addAdmin(admin, callback) {
-    console.log(admin);
     bcrypt.hash(admin.password, 10, function(err, hash) {
         if (!err) {
             admin.password = hash;
@@ -701,6 +701,7 @@ function addAdmin(admin, callback) {
                 db.collection('admin_users').insertOne(admin, (err, result) => {
                     assert.equal(null, err);
                     client.close();
+                    callback({ inserted: true });
                 });
             });
         }
