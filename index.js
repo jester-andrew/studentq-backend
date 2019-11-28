@@ -174,7 +174,8 @@ app.post('/que', (req, res) => {
 app.post('/login', (req, res) => {
     let plainText = req.body.password;
     let email = req.body.email;
-
+    console.log(plainText);
+    console.log(email);
     getUserByEmail(email, (result) => {
         if (result.isUser) {
             let adminUser = result.user;
@@ -186,7 +187,6 @@ app.post('/login', (req, res) => {
                             adminUser.token = token;
                             removeOldSessions(email, (result) => {
                                 createSession(adminUser, (response) => {
-                                    console.lo
                                     if (response.created) {
                                         res.status(200).json({
                                             auth: {
@@ -209,10 +209,13 @@ app.post('/login', (req, res) => {
                             res.end();
                         }
                     });
+                } else {
+                    res.status(200).json({ response: 'not authorized' });
+                    res.end();
                 }
             });
         } else {
-            res.status(401).json({ response: 'not authorized' });
+            res.status(200).json({ response: 'not authorized' });
             res.end();
         }
     });
@@ -807,10 +810,11 @@ function getLabInfo(callback) {
 }
 
 function updateLabInfo(updateValue, labName, callback) {
+    console.log(updateValue)
     mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
         assert.equal(null, err);
         let db = client.db(dbName);
-        db.collection('lab_times').update({ lab: labName }, { $set: updateValue }, (err, result) => {
+        db.collection('lab_times').updateOne({ lab: labName }, { $set: updateValue }, (err, result) => {
             if (!err) {
                 callback({ updated: true });
             } else {
