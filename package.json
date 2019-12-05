@@ -1,37 +1,28 @@
 {
-    "name": "StudentQ Backend",
-    "version": "0.0.0",
-    "description": "The Backend to StudentQ",
-    "engines": {
-        "node": "10.x"
-    },
-    "main": "server.js",
-    "scripts": {
-        "start": "node server.js",
-        "test": "node test.js"
-    },
-    "dependencies": {
-        "bcrypt": "^3.0.6",
-        "body-parser": "^1.19.0",
-        "cors": "^2.8.5",
-        "dotenv": "^8.1.0",
-        "ejs": "^2.5.6",
-        "express": "^4.15.2",
-        "mongodb": "^3.3.2",
-        "socket.io": "^2.3.0"
-    },
-    "devDependencies": {
-        "request": "^2.81.0",
-        "tape": "^4.7.0"
-    },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/heroku/node-js-getting-started"
-    },
-    "keywords": [
-        "node",
-        "heroku",
-        "express"
-    ],
-    "license": "MIT"
+  "name": "studentq-backend",
+  "version": "1.0.0",
+  "description": "This is the backend program to the studentq application",
+  "main": "index.js",
+  "dependencies": {
+    "bcrypt": "^3.0.6",
+    "body-parser": "^1.19.0",
+    "cors": "^2.8.5",
+    "dotenv": "^8.1.0",
+    "mongodb": "^3.3.2",
+    "socket.io": "^2.3.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/heroku/node-js-getting-started.git"
+  },
+  "author": "Andrew Jester",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/heroku/node-js-getting-started/issues"
+  },
+  "homepage": "https://github.com/heroku/node-js-getting-started#readme"
 }
