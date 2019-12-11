@@ -607,6 +607,9 @@ function updateRequest(req, callback) {
 }
 
 function recordHelpSession(helpSession, file, callback) {
+    console.log(helpSession);
+    console.log(file);
+    console.log(callback);
     fs.readFile(file, (err, data) => {
         if (err) {
             let jsonfile = {
@@ -653,18 +656,18 @@ function recordHelpSession(helpSession, file, callback) {
 
             //test dates and insert sessions
             let today = new Date();
-
+            console.log('today > weekcutoff' + today.getTime() > cutOffDate.getTime())
             if (today.getTime() > cutOffDate.getTime()) {
-                console.log(jsonfile.week);
+                console.log('in week');
                 jsonfile.week.timestamp = Date.now();
                 jsonfile.week.sessions = [];
                 jsonfile.week.sessions.push(helpSession);
             } else {
-                console.log('here');
                 jsonfile.week.sessions.push(helpSession)
             }
 
             if (today.getTime() > cutOffDate2.getTime()) {
+                console.log('in month');
                 jsonfile.month.timestamp = Date.now();
                 jsonfile.month.sessions = [];
                 jsonfile.month.sessions.push(helpSession)
@@ -673,6 +676,7 @@ function recordHelpSession(helpSession, file, callback) {
             }
 
             if (today.getTime() > cutOffDate3.getTime()) {
+                console.log('in semester');
                 jsonfile.semester.timestamp = Date.now();
                 jsonfile.semester.sessions = [];
                 jsonfile.semester.sessions.push(helpSession)
