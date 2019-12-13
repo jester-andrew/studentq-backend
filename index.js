@@ -251,6 +251,7 @@ app.get('/getLabs', (req, res) => {
 
 app.post('/saveSession', (req, res) => {
     let helpSession = req.body.session;
+    helpSession.finishedHelp = Date.now();
     let file = req.body.file;
     recordHelpSession(helpSession, "helpSessionDumps/" + file + ".json", (response, err) => {
         if (response.recorded) {
@@ -541,7 +542,7 @@ function addRequest(req, callback) {
             question: request.question,
             campus: request.campus,
             email: request.email,
-            timeEnteredQue: request.timeEnteredQue
+            timeEnteredQue: Date.now()
         }
 
         let db = client.db(dbName);
