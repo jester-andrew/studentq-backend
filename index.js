@@ -13,6 +13,7 @@ const bcrypt = require('bcrypt');
 const socket = require('socket.io');
 const fs = require('fs');
 
+
 /***************************************************************
  * Middleware
  ***************************************************************/
@@ -35,6 +36,7 @@ app.all("/*", function(req, res, next) {
  ***************************************************************/
 let dbURL = process.env.MONGODB_URI;
 const dbName = process.env.dbName;
+let fileNames = ['CIT Web Lab.json', 'CIT Database Lab.json', 'CIT Network Lab.json'];
 
 /***************************************************************
  * server setup
@@ -400,8 +402,23 @@ app.post('/updatelabInfo', (req, res) => {
             console.log(result.error);
         }
     });
+});
 
+app.post('/init', (req, res) => {
+    let sysDate = req.body.sysDate;
 
+    initSystem(sysDate, (result) => {
+        console.log('*******************************************')
+        console.log(result);
+        console.log('*******************************************')
+        if (result.init) {
+            res.status(200).json(result);
+            res.end();
+        } else {
+            res.status(500).json(result);
+            res.end();
+        }
+    });
 });
 
 /***************************************************************
@@ -607,37 +624,43 @@ function updateRequest(req, callback) {
 }
 
 function recordHelpSession(helpSession, file, callback) {
-    console.log(helpSession);
-    console.log(file);
-    console.log(callback);
     fs.readFile(file, (err, data) => {
         if (err) {
-            let jsonfile = {
-                week: {
-                    timestamp: Date.now(),
-                    sessions: []
-                },
-                month: {
-                    timestamp: Date.now(),
-                    sessions: []
-                },
-                semester: {
-                    timestamp: Date.now(),
-                    sessions: []
-                }
-            }
-            jsonfile.week.sessions.push(helpSession);
-            jsonfile.month.sessions.push(helpSession);
-            jsonfile.semester.sessions.push(helpSession);
-            fs.writeFile(file, JSON.stringify(jsonfile), (err) => {
-                let response;
-                if (!err) {
-                    response = { recorded: true, err: null }
-                    callback(response);
-                } else {
-                    response = { recorded: false, err: err }
-                    callback(response)
-                }
+            mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
+                let db = client.db(dbName);
+                db.collection('start_date').find({ _id: ObjectId("5df2de9cab1a07350096080e") }).toArray((err, result) => {
+                    if (!err) {
+                        let semesterStart = new Date(new Date(result[0].startDate).getTime() + (1 * 24 * 60 * 60 * 1000));
+                        let db = client.db(dbName);
+                        let jsonfile = {
+                            week: {
+                                timestamp: semesterStart.getTime(),
+                                sessions: []
+                            },
+                            month: {
+                                timestamp: semesterStart.getTime(),
+                                sessions: []
+                            },
+                            semester: {
+                                timestamp: semesterStart.getTime(),
+                                sessions: []
+                            }
+                        }
+                        jsonfile.week.sessions.push(helpSession);
+                        jsonfile.month.sessions.push(helpSession);
+                        jsonfile.semester.sessions.push(helpSession);
+                        fs.writeFile(file, JSON.stringify(jsonfile), (err) => {
+                            let response;
+                            if (!err) {
+                                response = { recorded: true, err: null }
+                                callback(response);
+                            } else {
+                                response = { recorded: false, err: err }
+                                callback(response)
+                            }
+                        });
+                    }
+                });
             });
         } else {
             let jsonfile = JSON.parse(data);
@@ -647,16 +670,16 @@ function recordHelpSession(helpSession, file, callback) {
             cutOffDate.setTime(cutOffDate.getTime() + (7 * 24 * 60 * 60 * 1000));
 
             //one month
-            let cutOffDate2 = new Date(jsonfile.week.timestamp);
+            let cutOffDate2 = new Date(jsonfile.month.timestamp);
+            console.log(cutOffDate2);
             cutOffDate2.setTime(cutOffDate2.getTime() + (30 * 24 * 60 * 60 * 1000));
 
             //one semester 16 weeks
-            let cutOffDate3 = new Date(jsonfile.week.timestamp);
+            let cutOffDate3 = new Date(jsonfile.semester.timestamp);
             cutOffDate3.setTime(cutOffDate3.getTime() + (112 * 24 * 60 * 60 * 1000));
 
             //test dates and insert sessions
             let today = new Date();
-            console.log('today > weekcutoff' + today.getTime() > cutOffDate.getTime())
             if (today.getTime() > cutOffDate.getTime()) {
                 console.log('in week');
                 jsonfile.week.timestamp = Date.now();
@@ -814,7 +837,6 @@ function getLabInfo(callback) {
 }
 
 function updateLabInfo(updateValue, labName, callback) {
-    console.log(updateValue)
     mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
         assert.equal(null, err);
         let db = client.db(dbName);
@@ -823,6 +845,37 @@ function updateLabInfo(updateValue, labName, callback) {
                 callback({ updated: true });
             } else {
                 callback({ updated: false, error: err });
+            }
+        });
+    });
+}
+
+function initSystem(sysDate, callback) {
+    //1. store semester start date in database
+    //2. transfer old files to an archive file
+    mongo.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
+        assert.equal(null, err);
+        let db = client.db(dbName);
+        db.collection('start_date').updateOne({ _id: ObjectId("5df2de9cab1a07350096080e") }, { $set: { startDate: sysDate } }, (err, result) => {
+            if (!err) {
+                console.log('success');
+                for (let i = 0; i < fileNames.length; i++) {
+                    console.log(fileNames[i]);
+                    let file = fileNames[i];
+                    let fullAddress = './helpSessionDumps/' + file;
+                    let iserr = false;
+                    if (fs.existsSync(fullAddress)) {
+                        let dir = './helpSessionDumps/archive/';
+                        let dest = path.resolve(dir, file);
+
+                        fs.rename(fullAddress, dest, (err) => {
+                            if (err) console.log(err);
+                        });
+                    }
+                }
+                callback({ init: true });
+            } else {
+                callback({ init: false });
             }
         });
     });
