@@ -597,7 +597,7 @@ function getQ(req, callback) {
             qcollectionAlias = request.collection;
         }
         console.log(qcollectionAlias);
-        db.collection('alias_to_collection_map').find({ alias: qcollectionAlias }).toArray((error, result) => {
+        db.collection('alias_to_collection_map').find({ alias: qcollectionAlias }).sort({ 'timeEnteredQue': 1 }).toArray((error, result) => {
             console.log(result[0].collection);
             db.collection(result[0].collection).find().toArray((error, result) => {
                 console.log(result);
