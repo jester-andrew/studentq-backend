@@ -5,7 +5,7 @@ const express = require('express')
 const app = express();
 require('dotenv').config()
 const path = require('path')
-const PORT = process.env.PORT || 5000
+const PORT = process.env.PORT || 2999
 const mongo = require('mongodb').MongoClient;
 var ObjectId = require('mongodb').ObjectID;
 const assert = require('assert');
